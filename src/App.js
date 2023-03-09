@@ -13,6 +13,10 @@ import MyModal from "./components/UI/MyModal/MyModal";
 import { usePosts } from "./components/hooks/usePosts";
 import axios from "axios";
 import PostServise from "./components/API/PostServise";
+import Loader from "./components/UI/Loader/Loader";
+import { useFetching } from "./components/hooks/useFetching";
+import { getPagesArray, getPagesCount } from "./utils/pages";
+
 
 function App() {
     const [posts, setPosts] = useState ([
@@ -23,21 +27,24 @@ function App() {
 
   const[filter, setFilter] = useState({sort:'', query:''});
   const [modal, setModaL] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+  const [limit, setLimit] = useState(10);
+  const [page,setPage] = useState(1);
   const sortedAndSearchPosts = usePosts(posts,filter.sort, filter.query);
-  const [isPostsLoading, setIsPostsLoading] = useState(false);
 
+  let pagesArray = getPagesArray(totalPages)
+  console.log(totalPages)
+ console.log(pagesArray)
+  const [fetchPosts, isPostsLoading, postError] = useFetching(async ()=>{
+    const response = await PostServise.getAll(limit, page);
+      setPosts(response.data);
+      const totatCount = response.headers['x-total-count']
+      setTotalPages(getPagesCount(totatCount, limit));
+  })
   useEffect(() => {
     fetchPosts()
-  }, []);
+  }, [page]);
 
-  async function fetchPosts(){
-    setIsPostsLoading(true);
-    setTimeout(async() => {
-      const posts = await PostServise.getAll();
-      setPosts(posts);
-      setIsPostsLoading(false);
-    }, 1000)
-  }
   const createPost = (newPost) => {
     setPosts([...posts, newPost])
     setModaL(false)
@@ -45,6 +52,9 @@ function App() {
 
    const removePost =(post) =>{
     setPosts(posts.filter(p => p.id !== post.id))
+   }
+   const changePage = (page) => {
+    setPage(page)
    }
    const removeAll = () =>{
     setPosts([])
@@ -68,10 +78,22 @@ function App() {
         filter={filter} 
         setFilter={setFilter}
       />
+      {postError && <h1>Произошла ошибка {postError}</h1>}
       {isPostsLoading
-      ?<h1 style = {{margin: "15px 0"}}>Идет закрузка...</h1>
+      ?<div style={{display: "flex", justifyContent: "center", marginTop: "50px"}}><Loader/></div>
       :<PostList remove={removePost} posts={sortedAndSearchPosts} title="Посты про JS"/>
       }
+      <div className="page__wrapper"></div>
+      {pagesArray.map(p =>
+        <span
+        onClick={() => changePage(p)}
+        key={p}
+        className={page === p ?
+           'page page__curent' 
+           : 'page'}>
+            {p}
+            </span>
+      )}
      </div>
   );
 }

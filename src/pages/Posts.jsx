@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useEffect, useState } from "react";
 import PostServise from "../components/API/PostServise";
 import { useFetching } from "../components/hooks/useFetching";
+import { useObserver } from "../components/hooks/useObserver";
 import { usePosts } from "../components/hooks/usePosts";
 import Postfilter from "../components/Postfilter";
 import Postform from "../components/Postform";
@@ -10,6 +11,7 @@ import MyButton from "../components/UI/Button/MyButton";
 import Loader from "../components/UI/Loader/Loader";
 import MyModal from "../components/UI/MyModal/MyModal";
 import Paginataion from "../components/UI/pagination/paginataion";
+import Myselect from "../components/UI/select/Myselect";
 import "../styles/App.css";
 import { getPagesCount } from "../utils/pages";
 
@@ -23,28 +25,30 @@ function Posts() {
   const [limit, setLimit] = useState(10);
   const [page,setPage] = useState(1);
   const sortedAndSearchPosts = usePosts(posts,filter.sort, filter.query);
-
+  const lastElement = useRef();
   const [fetchPosts, isPostsLoading, postError] = useFetching(async (limit, page)=>{
     const response = await PostServise.getAll(limit, page);
-      setPosts(response.data);
+      setPosts([...posts, ...response.data]);
       const totatCount = response.headers['x-total-count']
       setTotalPages(getPagesCount(totatCount, limit));
+  });
+  useObserver(lastElement, page < totalPages, isPostsLoading, () => {
+    setPage(page +1)
   })
   useEffect(() => {
     fetchPosts(limit, page)
-  }, []);
+  }, [page, limit]);
 
   const createPost = (newPost) => {
     setPosts([...posts, newPost])
     setModaL(false)
    }
 
-   const removePost =(post) =>{
+   const removePost = (post) =>{
     setPosts(posts.filter(p => p.id !== post.id))
    }
    const changePage = (page) => {
     setPage(page)
-    fetchPosts(limit, page)
    }
    const removeAll = () =>{
     setPosts([])
@@ -68,11 +72,26 @@ function Posts() {
         filter={filter} 
         setFilter={setFilter}
       />
-      {postError && <h1>Произошла ошибка {postError}</h1>}
-      {isPostsLoading
-      ?<div style={{display: "flex", justifyContent: "center", marginTop: "50px"}}><Loader/></div>
-      :<PostList remove={removePost} posts={sortedAndSearchPosts} title="Посты про JS"/>
+      <Myselect
+        value={limit}
+        onChange={value => setLimit(value)}
+        defualtValue= "Количество элементов на странице"
+        option={[
+          {value: 5, name: '5'},
+          {value: 10, name: '10'},
+          {value: 25, name: '25'},
+          {value: -1, name: 'Показать все'}
+        ]}
+      />
+      {postError &&  
+        <h1>Произошла ошибка {postError}</h1>
       }
+      <PostList remove={removePost} posts={sortedAndSearchPosts} title="Посты про JS"/>
+      <div ref={lastElement} style={{height: 20, background: "red"}}/>
+      {isPostsLoading &&
+        <div style={{display: "flex", justifyContent: "center", marginTop: "50px"}}><Loader/></div>
+      }
+        
       <Paginataion page={page}
       changePage={changePage}
       totalPages={totalPages}/>

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const PostItem = (props) => {
     let navigate = useNavigate()
     function transitToPost(id) {
-      navigate(`/posts/${id}`, { replace: true })
+      navigate(`/posts/${id}`, { replace: true})
 }
     return (
         <div className="post">
